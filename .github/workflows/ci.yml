@@ -1,0 +1,58 @@
+name: CI Pipeline Hospital
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build y Pruebas
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 1. Obtener código
+        uses: actions/checkout@v4
+
+      - name: 2. Configurar PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo_sqlite, sqlite3, bcmath, fileinfo, pdo_mysql
+          coverage: none
+
+      - name: 3. Validar Composer
+        run: composer validate --no-check-publish
+
+      - name: 4. Instalar dependencias PHP
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: 5. Configurar Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: 6. Instalar dependencias frontend
+        run: npm ci
+
+      - name: 7. Compilar assets frontend
+        run: npm run build
+
+      - name: 8. Preparar entorno Laravel
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          php artisan config:clear
+
+      - name: 9. Ejecutar pruebas automatizadas
+        env:
+          APP_ENV: testing
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ':memory:'
+        run: php artisan test
