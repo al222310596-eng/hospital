@@ -13,7 +13,7 @@ class PacientesTest extends TestCase
     public function test_listado_de_pacientes_carga(): void
     {
         $response = $this->get('/pacientes');
-        $response->assertStatus(404);
+        $response->assertStatus(200);
     }
 
     public function test_formulario_alta_carga(): void
