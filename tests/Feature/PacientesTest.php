@@ -19,7 +19,7 @@ class PacientesTest extends TestCase
     public function test_formulario_alta_carga(): void
     {
         $response = $this->get('/paciente_alta');
-        $response->assertStatus(500);
+        $response->assertStatus(200);
     }
 
     public function test_paciente_puede_ser_creado(): void
