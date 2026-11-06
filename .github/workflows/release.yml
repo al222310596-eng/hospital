@@ -26,8 +26,8 @@ jobs:
       - name: 3. Validar Composer
         run: composer validate --no-check-publish
 
-      - name: 4. Instalar dependencias PHP (Producción)
-        run: composer install --prefer-dist --no-interaction --no-progress --no-dev --optimize-autoloader
+      - name: 4. Instalar TODAS las dependencias (para pruebas)
+        run: composer install --prefer-dist --no-interaction --no-progress
 
       - name: 5. Configurar Node.js 22
         uses: actions/setup-node@v4
@@ -52,8 +52,12 @@ jobs:
           DB_CONNECTION: sqlite
           DB_DATABASE: ':memory:'
         run: php artisan test
+      
+      - name: 9. Limpiar dependencias de desarrollo (Preparar Producción)
+        # Quitamos PHPUnit, tests, etc., para que el ZIP pese menos y sea seguro
+        run: composer install --prefer-dist --no-interaction --no-progress --no-dev --optimize-autoloader
 
-      - name: 9. Empaquetar artefacto de liberación (ZIP)
+      - name: 10. Empaquetar artefacto de liberación (ZIP)
         run: |
           zip -r hospital-release.zip . \
             -x "*.git*" \
@@ -62,7 +66,7 @@ jobs:
             -x "tests/*" \
             -x "phpunit.xml"
 
-      - name: 10. Subir artefacto a GitHub Actions
+      - name: 11. Subir artefacto a GitHub Actions
         uses: actions/upload-artifact@v4
         with:
           name: hospital-release-${{ github.ref_name }}
