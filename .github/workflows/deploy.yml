@@ -1,0 +1,94 @@
+name: CI/CD Pipeline - Despliegue a Preproducción
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # Permite ejecutarlo manualmente desde GitHub
+
+jobs:
+  # ---------------------------------------------------------
+  # TRABAJO 1: Integración Continua y Pruebas
+  # ---------------------------------------------------------
+  build-and-test:
+    name: Build y Pruebas
+    runs-on: ubuntu-latest
+    steps:
+      - name: 1. Obtener código
+        uses: actions/checkout@v4
+
+      - name: 2. Configurar PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo_sqlite, sqlite3, bcmath, fileinfo, pdo_mysql
+          coverage: none
+
+      - name: 3. Instalar dependencias
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: 4. Preparar entorno Laravel para pruebas
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: 5. Ejecutar pruebas automatizadas
+        env:
+          APP_ENV: testing
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ':memory:'
+        run: php artisan test
+
+  # ---------------------------------------------------------
+  # TRABAJO 2: Despliegue Continuo (CD)
+  # ---------------------------------------------------------
+  deploy:
+    name: Desplegar a Preproducción
+    needs: build-and-test # Solo se ejecuta si las pruebas pasan
+    runs-on: ubuntu-latest
+    steps:
+      - name: 1. Obtener código
+        uses: actions/checkout@v4
+
+      - name: 2. Configurar PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo_mysql, bcmath, fileinfo
+
+      - name: 3. Instalar dependencias de producción
+        run: composer install --no-dev --optimize-autoloader --no-interaction
+
+      - name: 4. Empaquetar el proyecto para envío
+        run: tar -czf release.tar.gz --exclude='.git' --exclude='node_modules' --exclude='.env' .
+
+      - name: 5. Transferir archivos al servidor (Simulado/Configurar Secrets)
+        # Nota: Para que esto funcione en real, debes configurar los Secrets en GitHub.
+        # Para la práctica, esto imprime el comando que se ejecutaría.
+        run: |
+          echo "Simulando envío seguro por SCP/SSH..."
+          echo "scp release.tar.gz usuario@servidor_preproduccion:/var/www/hospital/"
+          echo "ssh usuario@servidor_preproduccion 'cd /var/www/hospital && tar -xzf release.tar.gz'"
+
+      - name: 6. Ejecutar Script de Despliegue Remoto (Simulado)
+        run: |
+          echo "Simulando ejecución del script de despliegue en el servidor..."
+          echo "cd /var/www/hospital/"
+          echo "composer install --no-dev --optimize-autoloader"
+          echo "php artisan migrate --force"
+          echo "php artisan optimize:clear"
+          echo "php artisan config:cache"
+          echo "php artisan route:cache"
+          echo "php artisan view:cache"
+          echo "chmod -R 775 storage bootstrap/cache"
+          echo "php artisan about"
+        # Si tuvieras un servidor, usarías la acción 'appleboy/ssh-action@master'
+
+      - name: 7. Verificación de Disponibilidad (Prueba HTTP)
+        # Aquí usamos el comando curl de la imagen que enviaste.
+        # Si la página responde con error (400-500), el paso falla y se marca en rojo.
+        run: |
+          echo "Verificando disponibilidad de la aplicación..."
+          # Como no tenemos un servidor real, verificamos que nuestro propio repo (GitHub) esté online
+          # En la vida real sería: curl --fail --silent --show-error https://tudominio.com
+          curl --fail --silent --show-error https://github.com/al222310596-eng/hospital
+          echo "¡Servidor respondiendo correctamente (HTTP 200)!"
