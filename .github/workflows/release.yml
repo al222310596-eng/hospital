@@ -1,0 +1,70 @@
+name: CI/CD Pipeline Hospital
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build-test-release:
+    name: Build, Test y Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 1. Obtener código
+        uses: actions/checkout@v4
+
+      - name: 2. Configurar PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo_sqlite, sqlite3, bcmath, fileinfo, pdo_mysql
+          coverage: none
+
+      - name: 3. Validar Composer
+        run: composer validate --no-check-publish
+
+      - name: 4. Instalar dependencias PHP (Producción)
+        run: composer install --prefer-dist --no-interaction --no-progress --no-dev --optimize-autoloader
+
+      - name: 5. Configurar Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: 6. Instalar dependencias frontend y compilar
+        run: |
+          npm ci
+          npm run build
+
+      - name: 7. Preparar entorno Laravel para pruebas
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          php artisan config:clear
+
+      - name: 8. Ejecutar pruebas automatizadas
+        env:
+          APP_ENV: testing
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ':memory:'
+        run: php artisan test
+
+      - name: 9. Empaquetar artefacto de liberación (ZIP)
+        run: |
+          zip -r hospital-release.zip . \
+            -x "*.git*" \
+            -x "*node_modules*" \
+            -x "*.env" \
+            -x "tests/*" \
+            -x "phpunit.xml"
+
+      - name: 10. Subir artefacto a GitHub Actions
+        uses: actions/upload-artifact@v4
+        with:
+          name: hospital-release-${{ github.ref_name }}
+          path: hospital-release.zip
+          retention-days: 7
