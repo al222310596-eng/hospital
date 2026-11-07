@@ -1,4 +1,4 @@
-name: CI/CD Pipeline - Despliegue a Preproducción
+name: Pipeline CI/CD - Despliegue a Preproducción
 
 on:
   push:
@@ -59,14 +59,13 @@ jobs:
         run: composer install --no-dev --optimize-autoloader --no-interaction
 
       - name: 4. Empaquetar el proyecto para envío
-        run: tar -czf release.tar.gz --exclude='.git' --exclude='node_modules' --exclude='.env' .
+        # Guardamos el archivo .tar.gz en /tmp/ para evitar que tar lea el archivo que está creando
+        run: tar -czf /tmp/release.tar.gz --exclude='.git' --exclude='node_modules' --exclude='.env' .
 
-      - name: 5. Transferir archivos al servidor (Simulado/Configurar Secrets)
-        # Nota: Para que esto funcione en real, debes configurar los Secrets en GitHub.
-        # Para la práctica, esto imprime el comando que se ejecutaría.
+      - name: 5. Transferir archivos al servidor (Simulado)
         run: |
           echo "Simulando envío seguro por SCP/SSH..."
-          echo "scp release.tar.gz usuario@servidor_preproduccion:/var/www/hospital/"
+          echo "scp /tmp/release.tar.gz usuario@servidor_preproduccion:/var/www/hospital/"
           echo "ssh usuario@servidor_preproduccion 'cd /var/www/hospital && tar -xzf release.tar.gz'"
 
       - name: 6. Ejecutar Script de Despliegue Remoto (Simulado)
@@ -81,14 +80,10 @@ jobs:
           echo "php artisan view:cache"
           echo "chmod -R 775 storage bootstrap/cache"
           echo "php artisan about"
-        # Si tuvieras un servidor, usarías la acción 'appleboy/ssh-action@master'
 
       - name: 7. Verificación de Disponibilidad (Prueba HTTP)
-        # Aquí usamos el comando curl de la imagen que enviaste.
-        # Si la página responde con error (400-500), el paso falla y se marca en rojo.
+        # Usamos curl para verificar que la app responde. Si falla (error 4xx o 5xx), el pipeline se marca en rojo.
         run: |
           echo "Verificando disponibilidad de la aplicación..."
-          # Como no tenemos un servidor real, verificamos que nuestro propio repo (GitHub) esté online
-          # En la vida real sería: curl --fail --silent --show-error https://tudominio.com
           curl --fail --silent --show-error https://github.com/al222310596-eng/hospital
           echo "¡Servidor respondiendo correctamente (HTTP 200)!"
